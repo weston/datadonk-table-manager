@@ -41,6 +41,16 @@ and ask it something like:
 
 > Review the source code in this repo for security issues. Does it do anything sketchy, like sending my data anywhere, reading other programs' memory, or running hidden code?
 
+### Check the exe was built from this code
+
+The downloadable exe is built by GitHub, not on anyone's PC, and GitHub signs a record of exactly which commit it was built from. To check your download, install the [GitHub CLI](https://cli.github.com) and run:
+
+```
+gh attestation verify DataDonkTM.exe --repo weston/datadonk-table-manager
+```
+
+It shows the commit the exe came from. The app's About tab shows the same commit.
+
 ## License
 
 MIT

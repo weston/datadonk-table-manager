@@ -30,6 +30,21 @@ public static class UpdateChecker
         }
     }
 
+    /// <summary>Git commit this exe was built from (the build embeds it in the version info), or null.</summary>
+    public static string? SourceCommit
+    {
+        get
+        {
+            var info = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            int plus = info?.IndexOf('+') ?? -1;
+            return plus >= 0 ? info![(plus + 1)..] : null;
+        }
+    }
+
+    public static string SourcePage => SourceCommit is string c
+        ? $"https://github.com/{Owner}/{Repo}/tree/{c}"
+        : $"https://github.com/{Owner}/{Repo}";
+
     public sealed record Release(Version Version, string PageUrl, string? DownloadUrl, long Size);
 
     private static HttpClient NewClient(TimeSpan timeout)

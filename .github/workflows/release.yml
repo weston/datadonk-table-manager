@@ -1,0 +1,70 @@
+# Builds DataDonkTM.exe on GitHub's servers and signs a record ("attestation") saying exactly
+# which commit it was built from. Anyone can check a downloaded exe with:
+#   gh attestation verify DataDonkTM.exe --repo weston/datadonk-table-manager
+#
+# Pushing a tag like v0.2.0 builds and publishes a release.
+# Running it by hand (Actions tab → Release → Run workflow) only builds and attests, as a test.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write      # create the release
+  id-token: write      # sign the attestation
+  attestations: write  # store the attestation
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Build exe
+        run: >
+          dotnet publish src/DataDonkTM -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None
+          -o publish
+
+      - name: Sign build record (attestation)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: publish/DataDonkTM.exe
+
+      - name: Keep the exe (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DataDonkTM
+          path: publish/DataDonkTM.exe
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $hash = (Get-FileHash publish/DataDonkTM.exe -Algorithm SHA256).Hash.ToLower()
+          $notes = @"
+          **New here?** Download **DataDonkTM.exe** below, then follow the [installation guide](https://github.com/${{ github.repository }}/blob/main/INSTALL.md).
+          Already installed? Click **Update now** in the app.
+
+          Built by GitHub from commit [``${{ github.sha }}``](https://github.com/${{ github.repository }}/tree/${{ github.sha }}).
+          To check your download was built from that code:
+
+          ``````
+          gh attestation verify DataDonkTM.exe --repo ${{ github.repository }}
+          ``````
+
+          SHA-256: ``$hash``
+          "@
+          gh release create "${{ github.ref_name }}" publish/DataDonkTM.exe --title "${{ github.ref_name }}" --notes $notes

@@ -613,6 +613,7 @@ internal sealed class MainForm : Form
         page.Controls.Add(Ui.Column(
             new Label { Text = "DataDonk Table Manager", Font = new Font("Segoe UI", 16, FontStyle.Bold), AutoSize = true, Margin = new Padding(3, 0, 3, 6) },
             _versionInfo,
+            Link(UpdateChecker.SourceCommit is string c ? $"Built from commit {c[..Math.Min(7, c.Length)]}" : "Source code", UpdateChecker.SourcePage),
             Ui.Row(Ui.Btn("Check for updates", async (_, _) => await CheckForUpdatesAsync(manual: true), 140), autoCheck),
             new Label { AutoSize = true, Height = 8 },
             Link("datadonk.com", "https://datadonk.com"),
