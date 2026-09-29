@@ -45,7 +45,7 @@ public static class ConfigStore
                     "DataDonk Table Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
-        Current = cfg ?? CreateDefault();
+        Current = cfg ?? new AppConfig();
         Normalize(Current);
         // The default profile is the one activated at startup.
         if (Current.DefaultProfileId != null && Current.Profiles.Any(p => p.Id == Current.DefaultProfileId))
@@ -75,12 +75,5 @@ public static class ConfigStore
             c.ActiveProfileId = c.DefaultProfileId;
         if (c.Bet.Preflop.Count > BetSettings.MaxButtons) c.Bet.Preflop.RemoveRange(BetSettings.MaxButtons, c.Bet.Preflop.Count - BetSettings.MaxButtons);
         if (c.Bet.Postflop.Count > BetSettings.MaxButtons) c.Bet.Postflop.RemoveRange(BetSettings.MaxButtons, c.Bet.Postflop.Count - BetSettings.MaxButtons);
-    }
-
-    private static AppConfig CreateDefault()
-    {
-        var c = new AppConfig();
-        c.Sites.AddRange(SitePresets.All());
-        return c;
     }
 }
