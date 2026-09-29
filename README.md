@@ -4,7 +4,7 @@ A small, free, open-source poker table manager for Windows. It does three things
 
 1. **Table tiling**: profiles of table slots across all your monitors. New tables snap into free slots. Drag a table onto another slot to move it there, or swap it with the table already in that slot.
 2. **RNG**: a small box on each playing table. Click it for a number from 1 to 100.
-3. **Bet-size buttons**: up to 8 buttons (2 rows × 4) with separate preflop and postflop sets, sized in **big blinds** or **% of pot**, with correct pot-raise math.
+3. **Bet-size buttons**: up to 8 buttons (2 rows × 4) with separate preflop and postflop sets, sized in **big blinds** or **% of pot**.
 
 ## Download
 
@@ -92,7 +92,7 @@ Overlays (RNG and bet buttons) appear **only on tables in playing slots**.
 
   `raise to = in-front + to-call + pct × (pot + to-call)`
 
-  In words: call first, then raise that percentage of the pot after calling. This matches the standard pot-raise definition. For example, 100% pot from the button at 0.5/1 → 3.5.
+  In words: call first, then raise that percentage of the pot after calling. For example, 100% pot from the button at 0.5/1 → 3.5.
 - If your site's pot number excludes current-street bets, untick "Pot number includes this street's bets" for that site.
 - The panel switches between the preflop and postflop sets by itself. Right-click it to force a street for the current hand.
 - Right-click-drag moves a panel. The position is saved per site.

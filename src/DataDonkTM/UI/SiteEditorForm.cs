@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using DataDonkTM.Betting;
 using DataDonkTM.Core;
@@ -20,7 +20,7 @@ internal sealed class SiteEditorForm : Form
     private static readonly (Item Item, string Label, bool IsPoint, Color Color, string Help)[] Items =
     {
         (Item.Pot, "Pot amount", false, Color.Gold, "Drag a box around the pot number (include the whole number, a little margin is fine). Required for % pot buttons."),
-        (Item.Call, "Call button text", false, Color.OrangeRed, "Drag a box over the Call button's label (e.g. 'Call 2.50'). Reads 'Check' as 0. Needed for correct raise sizes."),
+        (Item.Call, "Call button text", false, Color.OrangeRed, "Drag a box over the Call button's label (e.g. 'Call 2.50'). Reads 'Check' as 0. Used to work out raise sizes."),
         (Item.HeroBet, "Hero's bet in front (optional)", false, Color.Violet, "Drag a box where YOUR chips/bet amount appear in front of you (e.g. your posted blind). Improves raise math from the blinds / when re-raising."),
         (Item.Blinds, "Blinds text (optional)", false, Color.LightSkyBlue, "Only if the stakes are NOT in the window title: box a place on the table that shows the blinds, e.g. 'NLH 0.05/0.10'."),
         (Item.Board, "First flop card", false, Color.LimeGreen, "Box where the FIRST flop card appears. Then, with no board dealt, click 'Board is empty now → save reference'."),
