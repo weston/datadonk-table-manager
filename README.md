@@ -14,14 +14,13 @@ New here? Read the **[installation & update guide](INSTALL.md)**. It's written f
 
 ## Why you can trust it
 
-- **The only network code is the update check**, in `src/DataDonkTM/Core/UpdateChecker.cs`. It asks GitHub for the latest version number. When you click **Update now**, it downloads the new exe from this repo's releases. You can turn the check off in the About tab. Search the source for `HttpClient` to confirm it's used nowhere else.
-- **It never touches poker-client memory.** It uses only three ordinary Windows mechanisms:
-  - It moves and resizes windows (`SetWindowPos`).
-  - It screenshots table regions and reads them with the OCR engine built into Windows (`Windows.Media.Ocr`, runs offline).
-  - It sends normal mouse and keyboard input to the bet box when *you* click a bet button (`SendInput`).
-- All Win32 calls are in one file: `src/DataDonkTM/Native/Win32.cs`.
-- All settings live in one readable JSON file: `%APPDATA%\DataDonkTM\config.json`. For portable mode, put a `config.json` next to the exe.
-- The RNG uses the OS cryptographic generator (`RandomNumberGenerator.GetInt32(1, 101)`).
+All of the source code is here, so you can read it and check for yourself that it isn't doing anything sketchy. You don't have to take anyone's word for it.
+
+- **Where to look:**
+  - Everything it does to Windows is in one file: `src/DataDonkTM/Native/Win32.cs`.
+  - Everything it does on the internet (checking GitHub for updates) is in one file: `src/DataDonkTM/Core/UpdateChecker.cs`.
+- **Build it yourself** if you'd rather not trust the downloaded exe (see below). Then what you run is exactly the code you read.
+- **It never reads or changes your poker client's memory.**
 
 ## Build and run
 
