@@ -29,6 +29,18 @@ Your exe is `publish\DataDonkTM.exe`.
 
 All of the source code is here, so you can read it and check for yourself that it isn't doing anything sketchy. If you build it yourself, what you run is exactly the code you read.
 
+## Verification
+
+You don't need to read code yourself to check that this program is safe. Paste this link into ChatGPT, Claude, or a similar AI:
+
+```
+https://github.com/weston/datadonk-table-manager
+```
+
+and ask it something like:
+
+> Review the source code in this repo for security issues. Does it do anything sketchy, like sending my data anywhere, reading other programs' memory, or running hidden code?
+
 ## License
 
 MIT
