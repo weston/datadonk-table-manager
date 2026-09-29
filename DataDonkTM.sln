@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3A38D8EB-C8EB-4DFA-95BD-FFB8D0B37E67}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataDonkTM", "src\DataDonkTM\DataDonkTM.csproj", "{5963D475-11BE-4BB7-9A27-B6048A7FB182}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B8861A6F-86F4-461C-816A-3ED7C23F52DE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataDonkTM.Tests", "tests\DataDonkTM.Tests\DataDonkTM.Tests.csproj", "{2615D613-2028-4135-86CA-279FDBC55FFD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5963D475-11BE-4BB7-9A27-B6048A7FB182}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5963D475-11BE-4BB7-9A27-B6048A7FB182}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5963D475-11BE-4BB7-9A27-B6048A7FB182}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5963D475-11BE-4BB7-9A27-B6048A7FB182}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2615D613-2028-4135-86CA-279FDBC55FFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2615D613-2028-4135-86CA-279FDBC55FFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2615D613-2028-4135-86CA-279FDBC55FFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2615D613-2028-4135-86CA-279FDBC55FFD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5963D475-11BE-4BB7-9A27-B6048A7FB182} = {3A38D8EB-C8EB-4DFA-95BD-FFB8D0B37E67}
+		{2615D613-2028-4135-86CA-279FDBC55FFD} = {B8861A6F-86F4-461C-816A-3ED7C23F52DE}
+	EndGlobalSection
+EndGlobal
