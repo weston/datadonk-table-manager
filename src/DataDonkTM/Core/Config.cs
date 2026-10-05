@@ -75,7 +75,12 @@ public sealed class RelPoint
 }
 
 public enum SelectAllMethod { CtrlA, DoubleClick, TripleClick, Backspaces }
-public enum TypeMethod { VirtualKeys, Unicode }
+/// <summary>
+/// VirtualKeys/Unicode: simulated keyboard (SendInput). WindowMessages: click and keys sent straight to the
+/// table window. Accessibility: the bet box value is set through Windows accessibility (UI Automation).
+/// TextBox: the text of a native Windows text box at the bet box is set directly (WM_SETTEXT).
+/// </summary>
+public enum TypeMethod { VirtualKeys, Unicode, WindowMessages, Accessibility, TextBox }
 public enum CaptureMethod { PrintWindow, Screen }
 
 /// <summary>Everything needed to recognise and read one poker site's tables.</summary>
@@ -124,12 +129,15 @@ public sealed class SiteProfile
     // --- Entering bets ---
     public RelPoint? BetBoxPoint { get; set; }
     public SelectAllMethod SelectAll { get; set; } = SelectAllMethod.CtrlA;
-    public TypeMethod Typing { get; set; } = TypeMethod.VirtualKeys;
+    public TypeMethod Typing { get; set; } = TypeMethod.WindowMessages;
+    /// <summary>True once <see cref="Typing"/> has been seen to work on this site; it is then tried first.</summary>
+    public bool TypingLearned { get; set; }
     public int InputDelayMs { get; set; } = 30;
 
     // --- Overlay placement (top-left corner, fraction of client area) ---
     public RelPoint RngPosition { get; set; } = new(0.02, 0.12);
     public RelPoint BetPanelPosition { get; set; } = new(0.55, 0.70);
+    public RelPoint ReportButtonPosition { get; set; } = new(0.85, 0.01);
 
     public SiteProfile Clone()
     {
@@ -185,6 +193,8 @@ public sealed class AppConfig
     public bool TilingEnabled { get; set; } = true;
     /// <summary>Ask GitHub for a newer version at startup and twice a day (see UpdateChecker.cs).</summary>
     public bool CheckForUpdates { get; set; } = true;
+    /// <summary>Show a "Report bug" button on each table.</summary>
+    public bool ShowReportButton { get; set; } = true;
     public List<TilingProfile> Profiles { get; set; } = new();
     public string? DefaultProfileId { get; set; }
     public string? ActiveProfileId { get; set; }

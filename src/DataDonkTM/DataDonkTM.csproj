@@ -16,6 +16,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- UI Automation (accessibility): read and set the bet box of clients that expose it -->
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
     <InternalsVisibleTo Include="DataDonkTM.Tests" />
     <EmbeddedResource Include="app.ico" LogicalName="DataDonkTM.app.ico" />
   </ItemGroup>

@@ -16,11 +16,19 @@ public class AmountParserTests
     [InlineData("Raise to 12.5K", ".", 12500)]
     [InlineData("Pot: 1O5", ".", 105)]             // O read instead of 0
     [InlineData("Call 1,500", ".", 1500)]
+    [InlineData("call lBB", ".", 1)]               // l read instead of 1
+    [InlineData("Call l BB", ".", 1)]
+    [InlineData("Call l.5", ".", 1.5)]
+    [InlineData("Call I2", ".", 12)]
+    [InlineData("Pot O.5 BB", ".", 0.5)]
+    [InlineData("All-In 25", ".", 25)]             // words are left alone
     public void ParseFirst(string text, string sep, double expected) =>
         Assert.Equal(expected, AmountParser.ParseFirst(text, sep)!.Value, 6);
 
     [Theory]
     [InlineData("Check")]
+    [InlineData("Call")]
+    [InlineData("I")]
     [InlineData("")]
     [InlineData(null)]
     public void ParseFirst_NoNumber(string? text) => Assert.Null(AmountParser.ParseFirst(text));
@@ -39,4 +47,17 @@ public class AmountParserTests
 
     [Fact]
     public void BigBlind_NotFound() => Assert.Null(AmountParser.ParseBigBlind("PokerStars Lobby", SiteProfile.DefaultBlindsRegex));
+
+    [Theory]
+    [InlineData("Pot 12.5 BB", true)]
+    [InlineData("Pot: 12.5BB", true)]
+    [InlineData("Call 1 bb", true)]
+    [InlineData("Raise to 3bbs", true)]
+    [InlineData("Pot: $1.50", false)]
+    [InlineData("Call 0.50", false)]
+    [InlineData("call lBB", true)]
+    [InlineData("BB", false)]
+    [InlineData("Hobbs 12", false)]
+    public void MentionsBigBlinds(string text, bool expected) =>
+        Assert.Equal(expected, AmountParser.MentionsBigBlinds(text));
 }

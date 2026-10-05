@@ -32,7 +32,7 @@ You need a Windows 10 or Windows 11 PC. You don't need to install anything else.
 The settings window opens. After that, the app lives in the **system tray**: the small icons at the bottom-right of your screen, next to the clock. Look for the **DataDonk donkey** icon. If you don't see it, click the small **^** arrow there.
 
 - **Double-click** the donkey icon to open the settings.
-- **Right-click** the donkey icon to switch layouts or to **Exit**.
+- **Right-click** the donkey icon to **Open DataDonk**, switch layouts, or **Exit**.
 - Closing the settings window does **not** close the app. It keeps running in the tray.
 
 ### 4. (Optional) Pin it so it's easy to find
@@ -56,7 +56,7 @@ Right-click **DataDonkTM.exe** and choose **Pin to Start**, or **Show more optio
 2. The screen turns dark and shows your monitors. Click **Grid on monitor**, choose how many rows and columns you want, and click **Add grid**.
 3. Click **Save**.
 
-Now every new table jumps into its place. To move a table, drag it onto another spot and it snaps there. Drop it on a spot that already has a table and the two swap.
+Now every new table jumps into its place. To move a table, drag it onto another spot and it snaps there. Drop it on a spot that already has a table and the two swap. Drop it away from all the spots and it stays where you put it.
 
 **Playing** spots (green) get the bet buttons and the random number box. **Observing** spots (blue) don't. Double-click a spot in the layout editor to switch it between the two.
 
@@ -103,7 +103,10 @@ Check your site's rules on third-party tools first. Some sites, notably GGPoker,
 2. Delete your **DataDonk** folder.
 3. (Optional) Delete the settings folder `%APPDATA%\DataDonkTM`.
 
+**Something doesn't work.**
+Click the small red **Report bug** button on the table right when it happens (or right-click the donkey icon and choose **Report a bug**). It saves pictures of the table and screen plus what the app read into a folder in `%APPDATA%\DataDonkTM\bug-reports`. Nothing is sent anywhere; zip that folder and send it to the developer. Right-click the button to move it; you can hide it in the **About** tab.
+
 **The bet buttons type the wrong amount.**
-1. In **Poker sites**, select your site and click **Redo setup**.
+1. In **Poker sites**, select your site and click **Edit site setup**.
 2. Click the step you want to fix in the bar at the top.
 3. If your site shows amounts in big blinds (e.g. "Pot 12.5 BB"), tick **This site shows amounts in big blinds** on the last page.

@@ -82,4 +82,13 @@ public class BetCalculatorTests
     [InlineData(1200, ".", "1200")]
     public void Format(double amount, string sep, string expected) =>
         Assert.Equal(expected, BetCalculator.Format(amount, sep));
+
+    [Fact]
+    public void TableShowingBigBlinds_WorksWithoutBlindsOrSetting()
+    {
+        // No blinds in the title and the site isn't marked as "in big blinds", but the pot reads "1.5 BB".
+        var reading = new TableReading { BigBlind = null, Pot = 1.5, ToCall = 1, ShowsBigBlinds = true };
+        var ctx = reading.ToContext(new SiteProfile());
+        Assert.Equal(3, BetCalculator.RaiseTo(new BetButton(BetUnit.BigBlinds, 3), ctx, RoundingMode.Auto));
+    }
 }

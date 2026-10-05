@@ -13,6 +13,9 @@ public sealed class TableInfo
     public DateTime FirstSeen { get; init; } = DateTime.Now;
     internal RngOverlay? Rng { get; set; }
     internal BetOverlay? Bet { get; set; }
+    internal ReportOverlay? Report { get; set; }
+
+    public override string ToString() => $"\"{Title}\" ({Site.Name}, 0x{Hwnd.ToInt64():X})";
 }
 
 /// <summary>
@@ -31,6 +34,9 @@ public sealed class TableManager : IDisposable
     private readonly HashSet<IntPtr> _dragging = new();
 
     public event Action? TablesChanged;
+    /// <summary>The "Report bug" button on this table was clicked.</summary>
+    public event Action<TableInfo>? ReportRequested;
+    public event Action? OpenReportsFolderRequested;
 
     public IReadOnlyCollection<TableInfo> Tables => _tables.Values;
     private static AppConfig Cfg => ConfigStore.Current;
@@ -38,7 +44,7 @@ public sealed class TableManager : IDisposable
     public TableManager()
     {
         _hookProc = OnWinEvent;
-        _scanTimer.Tick += (_, _) => Scan();
+        _scanTimer.Tick += (_, _) => { Scan(); KeepOverlaysAbove(); };
         _debounce.Tick += (_, _) => { _debounce.Stop(); Scan(); };
     }
 
@@ -50,6 +56,7 @@ public sealed class TableManager : IDisposable
             var h = Win32.SetWinEventHook(min, max, IntPtr.Zero, _hookProc, 0, 0, flags);
             if (h != IntPtr.Zero) _hooks.Add(h);
         }
+        Hook(Win32.EVENT_SYSTEM_FOREGROUND, Win32.EVENT_SYSTEM_FOREGROUND);
         Hook(Win32.EVENT_SYSTEM_MOVESIZESTART, Win32.EVENT_SYSTEM_MOVESIZEEND);
         Hook(Win32.EVENT_SYSTEM_MINIMIZESTART, Win32.EVENT_SYSTEM_MINIMIZEEND);
         Hook(Win32.EVENT_OBJECT_DESTROY, Win32.EVENT_OBJECT_HIDE);
@@ -66,6 +73,10 @@ public sealed class TableManager : IDisposable
         bool known = _tables.TryGetValue(hwnd, out var t);
         switch (ev)
         {
+            case Win32.EVENT_SYSTEM_FOREGROUND:
+                // A table brought to the front covers its overlays until they are raised again.
+                if (known) KeepOverlaysAbove(t!);
+                break;
             case Win32.EVENT_OBJECT_LOCATIONCHANGE:
                 if (known) UpdateOverlays(t!);
                 break;
@@ -103,6 +114,7 @@ public sealed class TableManager : IDisposable
         bool changed = false;
         foreach (var gone in _tables.Keys.Where(h => !found.ContainsKey(h)).ToList())
         {
+            ActivityLog.Add($"Table gone: {_tables[gone]}");
             RemoveTable(gone);
             changed = true;
         }
@@ -116,6 +128,7 @@ public sealed class TableManager : IDisposable
             }
             t = new TableInfo { Hwnd = hwnd, Site = site, Title = title };
             _tables[hwnd] = t;
+            ActivityLog.Add($"Table found: {t}, window {Win32.GetWindowBounds(hwnd)}");
             OnTableAdded(t);
             changed = true;
         }
@@ -198,11 +211,14 @@ public sealed class TableManager : IDisposable
         Win32.GetCursorPos(out var cur);
         int? target = SlotLogic.SlotAtPoint(profile.Slots, new Point(cur.X, cur.Y));
         int? from = t.SlotIndex;
+        ActivityLog.Add($"Dragged {t} to {Win32.GetWindowBounds(t.Hwnd)}, cursor {cur.X},{cur.Y}: from slot {from?.ToString() ?? "none"} to slot {target?.ToString() ?? "none (left where dropped)"}");
 
         if (target == null)
         {
-            if (from != null) MoveToSlot(t, from.Value); // dropped outside any slot → snap back
-            else UpdateOverlays(t);
+            // Dropped outside every slot: leave it where the user put it, and free its old slot.
+            t.SlotIndex = null;
+            UpdateOverlays(t);
+            if (from != null) TablesChanged?.Invoke();
             return;
         }
 
@@ -229,6 +245,7 @@ public sealed class TableManager : IDisposable
         if (profile == null || slotIndex < 0 || slotIndex >= profile.Slots.Count) return;
         t.SlotIndex = slotIndex;
         var r = profile.Slots[slotIndex].Bounds;
+        ActivityLog.Add($"Move {t} to slot {slotIndex} {r}");
         if (Win32.IsIconic(t.Hwnd) || Win32.IsZoomed(t.Hwnd)) Win32.ShowWindow(t.Hwnd, Win32.SW_RESTORE);
         Win32.SetWindowPos(t.Hwnd, IntPtr.Zero, r.X, r.Y, r.Width, r.Height,
             Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE | Win32.SWP_NOOWNERZORDER);
@@ -239,6 +256,7 @@ public sealed class TableManager : IDisposable
     public void RetileAll()
     {
         var profile = Cfg.ActiveProfile;
+        ActivityLog.Add($"Re-tile all tables into layout '{profile?.Name}'");
         // Keep previous order: tables that had slots first (by slot), then the rest by age.
         var ordered = _tables.Values.OrderBy(t => t.SlotIndex ?? int.MaxValue).ThenBy(t => t.FirstSeen).ToList();
         foreach (var t in ordered) t.SlotIndex = null;
@@ -293,11 +311,27 @@ public sealed class TableManager : IDisposable
 
     private void UpdateOverlays(TableInfo t)
     {
-        bool show = SlotTypeOf(t) == SlotType.Playing
-                    && Win32.IsWindow(t.Hwnd) && Win32.IsWindowVisible(t.Hwnd) && !Win32.IsIconic(t.Hwnd)
-                    && !_dragging.Contains(t.Hwnd);
-        var client = show ? Win32.GetClientBounds(t.Hwnd) : Rectangle.Empty;
-        if (client.Width < 50 || client.Height < 50) show = false;
+        // Observing slots get no overlays; playing slots and tables outside any slot do.
+        bool onScreen = Win32.IsWindow(t.Hwnd) && Win32.IsWindowVisible(t.Hwnd) && !Win32.IsIconic(t.Hwnd) && !_dragging.Contains(t.Hwnd);
+        var client = onScreen ? Win32.GetClientBounds(t.Hwnd) : Rectangle.Empty;
+        if (client.Width < 50 || client.Height < 50) onScreen = false;
+        bool show = onScreen && SlotTypeOf(t) != SlotType.Observing;
+
+        // Report bug (every table, observing ones too: tiling problems happen there)
+        if (onScreen && Cfg.ShowReportButton)
+        {
+            if (t.Report == null)
+            {
+                t.Report = new ReportOverlay(t.Hwnd);
+                t.Report.ReportRequested += () => ReportRequested?.Invoke(t);
+                t.Report.OpenFolderRequested += () => OpenReportsFolderRequested?.Invoke();
+                t.Report.DragFinished += p => SaveOverlayPos(t, p, (s, v) => s.ReportButtonPosition = v);
+                t.Report.ResetPositionRequested += () => ResetPos(t, s => s.ReportButtonPosition = new RelPoint(0.85, 0.01));
+            }
+            t.Report.PlaceOn(client, t.Site.ReportButtonPosition);
+            if (!t.Report.Visible) t.Report.Show();
+        }
+        else t.Report?.Hide();
 
         // RNG
         if (show && Cfg.Rng.Enabled)
@@ -327,6 +361,20 @@ public sealed class TableManager : IDisposable
             if (!t.Bet.Visible) t.Bet.Show();
         }
         else t.Bet?.Hide();
+        KeepOverlaysAbove(t);
+    }
+
+    private static void KeepOverlaysAbove(TableInfo t)
+    {
+        t.Report?.KeepAboveTable();
+        t.Rng?.KeepAboveTable();
+        t.Bet?.KeepAboveTable();
+    }
+
+    /// <summary>Safety net for z-order changes no event reported (e.g. a client raising a table without activating it).</summary>
+    private void KeepOverlaysAbove()
+    {
+        foreach (var t in _tables.Values) KeepOverlaysAbove(t);
     }
 
     /// <summary>Overlay positions are stored per site, so every table of that site uses the new position.</summary>
@@ -360,11 +408,13 @@ public sealed class TableManager : IDisposable
     {
         t.Rng?.Dispose(); t.Rng = null;
         t.Bet?.Dispose(); t.Bet = null;
+        t.Report?.Dispose(); t.Report = null;
     }
 
     private void RemoveTable(IntPtr hwnd)
     {
         if (_tables.Remove(hwnd, out var t)) DisposeOverlays(t);
+        if (Betting.BetExecutor.LastBet.TryRemove(hwnd, out var bet)) bet.Dispose();
         _dragging.Remove(hwnd);
     }
 
