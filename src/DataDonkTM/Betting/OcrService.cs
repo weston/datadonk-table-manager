@@ -13,20 +13,29 @@ namespace DataDonkTM.Betting;
 /// </summary>
 public static class OcrService
 {
-    private static OcrEngine? _engine;
+    /// <summary>
+    /// Engines not in use. An engine reads one image at a time ("Another RecognizeAsync operation is already
+    /// running"), so regions read at the same time each take their own; they are kept for the next read.
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentBag<OcrEngine> Idle = new();
 
-    private static OcrEngine Engine =>
-        _engine ??= OcrEngine.TryCreateFromUserProfileLanguages()
-                    ?? OcrEngine.TryCreateFromLanguage(new Language("en-US"))
-                    ?? throw new InvalidOperationException(
-                        "Windows OCR is not available. Install a language pack with OCR support (Settings → Time & language → Language).");
+    private static OcrEngine CreateEngine() =>
+        OcrEngine.TryCreateFromUserProfileLanguages()
+        ?? OcrEngine.TryCreateFromLanguage(new Language("en-US"))
+        ?? throw new InvalidOperationException(
+            "Windows OCR is not available. Install a language pack with OCR support (Settings → Time & language → Language).");
 
     public static async Task<string> ReadTextAsync(Bitmap region)
     {
         using var prepared = Prepare(region);
         using var sb = ToSoftwareBitmap(prepared);
-        var result = await Engine.RecognizeAsync(sb);
-        return string.Join(" ", result.Lines.Select(l => l.Text)).Trim();
+        var engine = Idle.TryTake(out var e) ? e : CreateEngine();
+        try
+        {
+            var result = await engine.RecognizeAsync(sb);
+            return string.Join(" ", result.Lines.Select(l => l.Text)).Trim();
+        }
+        finally { Idle.Add(engine); }
     }
 
     /// <summary>Upscales small text, converts to grayscale and makes the text dark-on-light, which Windows OCR reads best.</summary>

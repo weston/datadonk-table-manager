@@ -4,9 +4,10 @@ using DataDonkTM.Native;
 namespace DataDonkTM.Overlays;
 
 /// <summary>
-/// Base for windows drawn on top of a poker table. The table window is set as the Win32 owner, so the
-/// overlay always stays directly above its table in z-order and hides when it is minimised. The overlay
-/// never takes keyboard focus (WS_EX_NOACTIVATE). Right-button drag moves it.
+/// Base for windows drawn on top of a poker table, kept directly above it in z-order (see <see cref="KeepAboveTable"/>).
+/// The overlay never takes keyboard focus (WS_EX_NOACTIVATE). Right-button drag moves it.
+/// The table is deliberately not made the overlay's owner: an owner in another process ties both programs'
+/// input together, so tables froze (e.g. after another table closed) whenever that tangle went wrong.
 /// </summary>
 internal abstract class OverlayForm : Form
 {
@@ -22,8 +23,7 @@ internal abstract class OverlayForm : Form
     {
         TableHwnd = tableHwnd;
         FormBorderStyle = FormBorderStyle.None;
-        // Deliberately not setting ShowInTaskbar = false: WinForms would then re-own the window to a hidden
-        // helper window. WS_EX_TOOLWINDOW (below) already keeps overlays off the taskbar.
+        // Not setting ShowInTaskbar = false: WS_EX_TOOLWINDOW (below) already keeps overlays off the taskbar.
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         DoubleBuffered = true;
@@ -38,18 +38,29 @@ internal abstract class OverlayForm : Form
         {
             var cp = base.CreateParams;
             cp.ExStyle |= Win32.WS_EX_NOACTIVATE | Win32.WS_EX_TOOLWINDOW;
-            cp.Parent = TableHwnd; // top-level window with a parent handle = owned window
             return cp;
         }
     }
 
-    protected override void SetVisibleCore(bool value)
+    /// <summary>Moves the overlay directly above its table in z-order, unless it already is above it.</summary>
+    public void KeepAboveTable()
     {
-        base.SetVisibleCore(value);
-        // WinForms resets the owner while showing a form that has no WinForms Owner, so re-apply it:
-        // the table must be the owner to keep the overlay just above it in z-order.
-        if (value && IsHandleCreated && Win32.GetWindow(Handle, Win32.GW_OWNER) != TableHwnd)
-            Win32.SetWindowLongPtr(Handle, Win32.GWLP_HWNDPARENT, TableHwnd);
+        if (!Visible || !IsHandleCreated) return;
+        // Already above the table? Walk up from the table (bounded: plenty of windows can sit in between).
+        var w = TableHwnd;
+        for (int i = 0; i < 200; i++)
+        {
+            w = Win32.GetWindow(w, Win32.GW_HWNDPREV);
+            if (w == IntPtr.Zero) break;
+            if (w == Handle) return;
+        }
+        // Insert just below whatever is above the table. If that is an always-on-top window (or nothing),
+        // go to the top of the normal windows instead, so the overlay never becomes always-on-top itself.
+        var above = Win32.GetWindow(TableHwnd, Win32.GW_HWNDPREV);
+        if (above == IntPtr.Zero || (Win32.GetWindowLongPtr(above, Win32.GWL_EXSTYLE).ToInt64() & Win32.WS_EX_TOPMOST) != 0)
+            above = Win32.HWND_TOP;
+        Win32.SetWindowPos(Handle, above, 0, 0, 0, 0,
+            Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOACTIVATE | Win32.SWP_NOOWNERZORDER);
     }
 
     protected override void WndProc(ref Message m)

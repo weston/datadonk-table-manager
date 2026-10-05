@@ -48,13 +48,25 @@ public static class AmountParser
         return double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
     }
 
-    /// <summary>Fix common OCR letter/digit mix-ups, only when surrounded by digits.</summary>
+    /// <summary>
+    /// Fix common OCR letter/digit mix-ups where a number must be: between digits ("1O0", "2l5"), or a
+    /// lone letter starting an amount ("Call lBB", "Call l.5", "Pot O.5 BB"). Words like "Call" are untouched.
+    /// </summary>
     private static string FixOcrDigits(string s)
     {
         s = Regex.Replace(s, @"(?<=\d)[Oo](?=[\d.,]|$)|(?<=[\d.,])[Oo](?=\d)", "0");
         s = Regex.Replace(s, @"(?<=\d)[lI|](?=\d)", "1");
+        // Not after a letter, and followed by a digit, a decimal part, or (for l/I/|) a "BB" unit.
+        s = Regex.Replace(s, @"(?<![a-zA-Z])[lI|](?=\d|[.,]\d|\s?(?i:bbs?)(?![a-zA-Z]))", "1");
+        s = Regex.Replace(s, @"(?<![a-zA-Z])[Oo](?=\d|[.,]\d)", "0");
         return s;
     }
+
+    private static readonly Regex BigBlindUnitRx = new(@"(?<![a-z])bbs?(?![a-z])", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>True if text such as "Pot 12.5 BB" or "Call 1bb" shows an amount in big blinds.</summary>
+    public static bool MentionsBigBlinds(string? text) =>
+        !string.IsNullOrEmpty(text) && Regex.IsMatch(text = FixOcrDigits(text), @"\d") && BigBlindUnitRx.IsMatch(text);
 
     /// <summary>Extracts the big blind using a regex with a named group "bb".</summary>
     public static double? ParseBigBlind(string? text, string regex, string decimalSeparator = ".")

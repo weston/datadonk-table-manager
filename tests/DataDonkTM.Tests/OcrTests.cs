@@ -49,4 +49,23 @@ public class OcrTests
         var read = await OcrService.ReadTextAsync(bmp);
         Assert.Equal(0.4, AmountParser.ParseFirst(read)!.Value, 6);
     }
+
+    /// <summary>The table's regions are read at the same time; each read must get its own text back.</summary>
+    [Fact]
+    public async Task ReadsSeveralRegionsAtOnce()
+    {
+        if (!OcrAvailable) return;
+        var expected = new[] { 12.5, 3.75, 840, 0.4, 61.2, 7 };
+        var bitmaps = expected.Select(v => Render($"Pot: {v}", Color.WhiteSmoke, Color.FromArgb(20, 60, 40), 13)).ToList();
+        try
+        {
+            for (int round = 0; round < 5; round++)
+            {
+                var reads = await Task.WhenAll(bitmaps.Select(b => Task.Run(() => OcrService.ReadTextAsync(b))));
+                for (int i = 0; i < expected.Length; i++)
+                    Assert.Equal(expected[i], AmountParser.ParseFirst(reads[i])!.Value, 6);
+            }
+        }
+        finally { bitmaps.ForEach(b => b.Dispose()); }
+    }
 }

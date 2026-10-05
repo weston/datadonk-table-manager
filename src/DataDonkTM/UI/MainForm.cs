@@ -50,7 +50,14 @@ internal sealed class MainForm : Form
 
         _tray = new NotifyIcon { Icon = Ui.TrayIcon, Text = "DataDonk Table Manager", Visible = true, ContextMenuStrip = BuildTrayMenu() };
         _tray.DoubleClick += (_, _) => ShowSettings();
-        _tray.BalloonTipClicked += (_, _) => { if (_update != null) ShowSettings(); };
+        _tray.BalloonTipClicked += (_, _) =>
+        {
+            if (_balloonReport is string dir) OpenFolder(dir);
+            else if (_update != null) ShowSettings();
+        };
+        _tray.BalloonTipClosed += (_, _) => _balloonReport = null;
+        _manager.ReportRequested += t => _ = SaveReportAsync(t);
+        _manager.OpenReportsFolderRequested += () => OpenFolder(BugReporter.ReportsFolder);
 
         RefreshProfiles();
         RefreshSites();
@@ -135,6 +142,35 @@ internal sealed class MainForm : Form
             UpdateChecker.OpenInBrowser(_update.PageUrl);
     }
 
+    // ---- Bug reports ------------------------------------------------------------------
+
+    /// <summary>The report folder the current tray balloon is about, so clicking it opens that folder.</summary>
+    private string? _balloonReport;
+
+    private async Task SaveReportAsync(TableInfo? table)
+    {
+        table?.Report?.SetStatus("Saving…", resetSoon: false);
+        try
+        {
+            var dir = await BugReporter.SaveAsync(_manager, table);
+            table?.Report?.SetStatus("Saved ✔", resetSoon: true);
+            _balloonReport = dir;
+            _tray.ShowBalloonTip(3000, "Bug report saved", Path.GetFileName(dir), ToolTipIcon.Info);
+        }
+        catch (Exception ex)
+        {
+            table?.Report?.SetStatus("Failed", resetSoon: true);
+            _balloonReport = null;
+            _tray.ShowBalloonTip(5000, "Couldn't save the bug report", ex.Message, ToolTipIcon.Warning);
+        }
+    }
+
+    private static void OpenFolder(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        Process.Start("explorer.exe", $"\"{dir}\"");
+    }
+
     // ---- Window / tray behaviour ----------------------------------------------------
 
     protected override void SetVisibleCore(bool value)
@@ -165,6 +201,9 @@ internal sealed class MainForm : Form
     {
         Show();
         if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+        // Windows may refuse to bring a tray app to the front; briefly going topmost gets it above the poker tables.
+        TopMost = true;
+        TopMost = false;
         Activate();
     }
 
@@ -187,7 +226,8 @@ internal sealed class MainForm : Form
                     { Font = new Font(menu.Font, FontStyle.Bold) });
                 menu.Items.Add(new ToolStripSeparator());
             }
-            menu.Items.Add("Settings", null, (_, _) => ShowSettings());
+            menu.Items.Add(new ToolStripMenuItem("Open DataDonk", null, (_, _) => ShowSettings()) { Font = new Font(menu.Font, FontStyle.Bold) });
+            menu.Items.Add(new ToolStripSeparator());
             var profiles = new ToolStripMenuItem("Activate profile");
             foreach (var p in Cfg.Profiles)
             {
@@ -198,6 +238,9 @@ internal sealed class MainForm : Form
             menu.Items.Add(profiles);
             menu.Items.Add(new ToolStripMenuItem("Tiling enabled", null, (_, _) => _tilingEnabled.Checked = !_tilingEnabled.Checked) { Checked = Cfg.TilingEnabled });
             menu.Items.Add("Re-tile open tables", null, (_, _) => _manager.RetileAll());
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Report a bug", null, (_, _) => _ = SaveReportAsync(null));
+            menu.Items.Add("Open bug reports folder", null, (_, _) => OpenFolder(BugReporter.ReportsFolder));
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Exit", null, (_, _) => ExitApp());
         };
@@ -375,7 +418,7 @@ internal sealed class MainForm : Form
         // These act on the selected site, so they are greyed out when none is selected.
         _siteButtons.AddRange(new[]
         {
-            Ui.Btn("Redo setup", (_, _) => { if (SelectedSite is { } s) RunWizard(s); }, 190),
+            Ui.Btn("Edit site setup", (_, _) => { if (SelectedSite is { } s) RunWizard(s); }, 190),
             Ui.Btn("Delete", (_, _) => DeleteSite(), 190),
             Ui.Btn("Advanced settings", (_, _) => EditSite(), 190),
             Ui.Btn("Export (to share)", (_, _) => ExportSite(), 190),
@@ -483,7 +526,7 @@ internal sealed class MainForm : Form
             Cfg.Sites.Add(s);
             ConfigStore.Save();
             RefreshSites(s);
-            MessageBox.Show(this, $"Imported '{s.Name}' (disabled). Check it with Redo setup, then tick it to turn it on.", "Import");
+            MessageBox.Show(this, $"Imported '{s.Name}' (disabled). Check it with Edit site setup, then tick it to turn it on.", "Import");
         }
         catch (Exception ex) { MessageBox.Show(this, "Import failed: " + ex.Message); }
     }
@@ -609,6 +652,8 @@ internal sealed class MainForm : Form
         _versionInfo.Font = new Font("Segoe UI", 10.5f);
         var autoCheck = Ui.Chk("Check for updates automatically", Cfg.CheckForUpdates);
         autoCheck.CheckedChanged += (_, _) => { Cfg.CheckForUpdates = autoCheck.Checked; ConfigStore.Save(); };
+        var reportButton = Ui.Chk("Show a \"Report bug\" button on tables", Cfg.ShowReportButton);
+        reportButton.CheckedChanged += (_, _) => { Cfg.ShowReportButton = reportButton.Checked; SaveAndRefresh(); };
 
         page.Controls.Add(Ui.Column(
             new Label { Text = "DataDonk Table Manager", Font = new Font("Segoe UI", 16, FontStyle.Bold), AutoSize = true, Margin = new Padding(3, 0, 3, 6) },
@@ -620,7 +665,9 @@ internal sealed class MainForm : Form
             Link("piotools.com", "https://piotools.com"),
             Link("Installation & update guide", UpdateChecker.GuidePage),
             new Label { AutoSize = true, Height = 8 },
-            Ui.Btn("Open settings folder", (_, _) => Process.Start("explorer.exe", $"/select,\"{ConfigStore.ConfigPath}\""), 160)));
+            Ui.Btn("Open settings folder", (_, _) => Process.Start("explorer.exe", $"/select,\"{ConfigStore.ConfigPath}\""), 160),
+            new Label { AutoSize = true, Height = 8 },
+            Ui.Row(reportButton, Ui.Btn("Open bug reports folder", (_, _) => OpenFolder(BugReporter.ReportsFolder), 170))));
         return page;
     }
 
